@@ -1,0 +1,6 @@
+.cache
+.env
+/dist
+/c64catalog
+.DS_Store
+/ROMS

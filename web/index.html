@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C64 Game Catalog</title>
+<meta name="description" content="A browsable catalog of Commodore 64 games from the Internet Archive's C64 software library, with downloads and in-browser play.">
+<meta name="color-scheme" content="dark">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23352879'/%3E%3Crect x='6' y='6' width='52' height='52' rx='6' fill='%236c5eb5'/%3E%3Crect x='14' y='38' width='8' height='12' fill='%23ffffff'/%3E%3Ctext x='32' y='34' text-anchor='middle' font-family='monospace' font-weight='700' font-size='22' fill='%23ffffff'%3E64%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">READY.</span>
+    <span class="brand-name">C64 Game Catalog</span>
+  </div>
+
+  <label class="search">
+    <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"></circle>
+      <path d="m16.5 16.5 4 4"></path>
+    </svg>
+    <input id="search" type="search" placeholder="Search titles, publishers, developers, genres" autocomplete="off" spellcheck="false" aria-label="Search games">
+    <kbd>/</kbd>
+  </label>
+
+  <div class="top-actions">
+    <button id="favorites-toggle" class="button ghost" type="button" aria-pressed="false">
+      <span class="star" aria-hidden="true">★</span> Favorites
+      <span id="favorites-count" class="count">0</span>
+    </button>
+    <button id="export" class="button" type="button">Export</button>
+    <button id="import" class="button ghost" type="button">Import</button>
+    <input id="import-file" type="file" accept="application/json,.json" hidden>
+  </div>
+</header>
+
+<section class="controls" aria-label="Filters">
+  <div class="control-group">
+    <span class="control-label">Genre</span>
+    <div id="genre-chips" class="chips"></div>
+  </div>
+
+  <div class="control-group">
+    <span class="control-label">Media</span>
+    <div id="media-chips" class="chips"></div>
+  </div>
+
+  <div class="control-row">
+    <label class="field">
+      <span class="control-label">From</span>
+      <select id="year-min"></select>
+    </label>
+    <label class="field">
+      <span class="control-label">To</span>
+      <select id="year-max"></select>
+    </label>
+    <label class="field rating-field">
+      <span class="control-label">Rating <output id="rating-output">Any</output></span>
+      <input id="rating-min" type="range" min="0" max="5" step="0.1" value="0">
+    </label>
+    <div class="field">
+      <span class="control-label">Sort</span>
+      <span class="sort-row">
+        <select id="sort">
+          <option value="name">Name</option>
+          <option value="year">Year</option>
+          <option value="top" selected>Top rated</option>
+          <option value="rating">Average rating</option>
+          <option value="popular">Popular</option>
+          <option value="genre">Genre</option>
+        </select>
+        <button id="sort-direction" class="button icon" type="button" aria-label="Sort ascending">↑</button>
+      </span>
+    </div>
+    <button id="clear-filters" class="button ghost clear" type="button">Clear filters</button>
+  </div>
+</section>
+
+<main>
+  <p id="status" class="statusbar" role="status" aria-live="polite">Loading catalog…</p>
+  <div id="grid" class="grid"></div>
+  <nav id="pager" class="pager" aria-label="Pagination" hidden>
+    <button id="prev-page" class="button ghost" type="button">← Previous</button>
+    <label class="pager-position">
+      Page
+      <select id="page-select" aria-label="Page"></select>
+      of <span id="page-total">1</span>
+    </label>
+    <button id="next-page" class="button ghost" type="button">Next →</button>
+  </nav>
+  <div id="empty" class="empty" hidden>
+    <p>No games match these filters.</p>
+    <button id="empty-clear" class="button" type="button">Clear filters</button>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <p>Game files and screenshots come from the games and cracks collections of the Internet Archive's <a href="https://archive.org/details/softwarelibrary_c64">Commodore 64 software library</a>, which also runs every game in the browser. Descriptions, box art, and community ratings come from the <a href="https://gamesdb.launchbox-app.com/">LaunchBox Games Database</a>; only games found there are listed. Not affiliated with LaunchBox or the Internet Archive. All game titles, box art, and screenshots belong to their respective owners.</p>
+  <p>Favorites are stored in this browser. Use Export to back them up and Import to restore them.</p>
+</footer>
+
+<div id="backdrop" class="backdrop" hidden></div>
+
+<aside id="panel" class="panel" role="dialog" aria-modal="false" aria-label="Game details" aria-hidden="true" tabindex="-1" inert>
+  <div class="panel-bar">
+    <div class="panel-nav">
+      <button id="prev-game" class="button icon" type="button" aria-label="Previous game">←</button>
+      <button id="next-game" class="button icon" type="button" aria-label="Next game">→</button>
+    </div>
+    <button id="close-panel" class="button icon" type="button" aria-label="Close details">✕</button>
+  </div>
+
+  <div class="panel-body">
+    <div class="panel-art">
+      <img id="detail-box" alt="">
+    </div>
+
+    <div class="panel-head">
+      <h2 id="detail-title">—</h2>
+      <p id="detail-sub" class="muted"></p>
+      <p id="detail-aka" class="aka muted" hidden></p>
+      <p id="detail-rating" class="rating-line" hidden></p>
+    </div>
+
+    <section id="detail-downloads" class="downloads" aria-label="Downloads">
+      <h3>Download</h3>
+      <div id="download-links" class="download-links"></div>
+      <p id="download-note" class="download-note muted"></p>
+    </section>
+
+    <section id="detail-versions" class="versions" hidden>
+      <details>
+        <summary id="versions-summary">Other versions</summary>
+        <ul id="version-list" class="version-list"></ul>
+      </details>
+    </section>
+
+    <button id="detail-favorite" class="button detail-favorite" type="button" aria-pressed="false">☆ Add to favorites</button>
+
+    <dl id="detail-facts" class="facts"></dl>
+    <div id="detail-tags" class="tags"></div>
+
+    <section class="overview">
+      <h3>Overview</h3>
+      <p id="detail-overview" class="muted"></p>
+    </section>
+
+    <section id="detail-screenshots" class="screenshots" hidden>
+      <h3>Screenshots</h3>
+      <div id="detail-shots" class="screenshot-grid"></div>
+    </section>
+
+    <section id="detail-links" class="more-links" hidden>
+      <h3>More</h3>
+      <div id="more-links" class="download-links"></div>
+    </section>
+  </div>
+</aside>
+
+<div id="lightbox" class="lightbox" hidden>
+  <button id="lightbox-close" class="button icon lightbox-close" type="button" aria-label="Close image">✕</button>
+  <img id="lightbox-image" alt="">
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<noscript><p class="noscript">This catalog needs JavaScript enabled.</p></noscript>
+
+<script src="static/app.js" defer></script>
+</body>
+</html>
