@@ -35,9 +35,14 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # deploy-pages clamps its timeout to 10 minutes and GitHub's deployment
+      # backend has the same hard limit, so a larger `timeout` input has no
+      # effect. If this times out, push a new commit instead of re-running the
+      # job: a rerun reuses the canceled build version and stays stuck.
       - id: deployment
         uses: actions/deploy-pages@v4
